@@ -46,16 +46,17 @@ contract Swap is IUnlockCallback {
     {
         // Write your code here
 
-        (address sender, SwapExactInputSingleHop memory params) = abi.decode(data, (address, SwapExactInputSingleHop));
+        (address sender, SwapExactInputSingleHop memory params) =
+            abi.decode(data, (address, SwapExactInputSingleHop));
 
         int256 swapDelta = poolManager.swap({
             key: params.poolKey,
             params: SwapParams({
                 zeroForOne: params.zeroForOne,
                 amountSpecified: -(params.amountIn.toInt256()),
-                sqrtPriceLimitX96: params.zeroForOne ?
-                MIN_SQRT_PRICE + 1 :
-                MAX_SQRT_PRICE - 1
+                sqrtPriceLimitX96: params.zeroForOne
+                    ? MIN_SQRT_PRICE + 1
+                    : MAX_SQRT_PRICE - 1
             }),
             hookData: ""
         });
@@ -65,36 +66,35 @@ contract Swap is IUnlockCallback {
         int128 amount0 = delta.amount0();
         int128 amount1 = delta.amount1();
 
-        (address currencyIn, address currencyOut, uint256 amountIn, uint256 amountOut) = params.zeroForOne ?
         (
-            params.poolKey.currency0,
-            params.poolKey.currency1,
-            (-amount0).toUint256(),
-            amount1.toUint256()
-        ) : (
-            params.poolKey.currency1,
-            params.poolKey.currency0,
-            (-amount1).toUint256(),
-            amount0.toUint256()
-        );
+            address currencyIn,
+            address currencyOut,
+            uint256 amountIn,
+            uint256 amountOut
+        ) = params.zeroForOne
+            ? (
+                params.poolKey.currency0,
+                params.poolKey.currency1,
+                (-amount0).toUint256(),
+                amount1.toUint256()
+            )
+            : (
+                params.poolKey.currency1,
+                params.poolKey.currency0,
+                (-amount1).toUint256(),
+                amount0.toUint256()
+            );
 
         require(amountOut >= params.amountOutMin, "amount out < min");
 
-        poolManager.take({
-            currency: currencyOut,
-            to: sender,
-            amount: amountOut
-        });
+        poolManager.take({currency: currencyOut, to: sender, amount: amountOut});
 
         poolManager.sync(currencyIn);
 
         if (currencyIn == address(0)) {
             poolManager.settle{value: amountIn}();
         } else {
-            IERC20(currencyIn).transfer(
-                address(poolManager), 
-                amountIn
-            );
+            IERC20(currencyIn).transfer(address(poolManager), amountIn);
             poolManager.settle();
         }
 
@@ -103,10 +103,10 @@ contract Swap is IUnlockCallback {
 
     function swap(SwapExactInputSingleHop calldata params) external payable {
         // Write your code here
-        address currency = params.zeroForOne ? 
-             params.poolKey.currency0 :
-             params.poolKey.currency1;
-    
+        address currency = params.zeroForOne
+            ? params.poolKey.currency0
+            : params.poolKey.currency1;
+
         currency.transferIn(msg.sender, params.amountIn);
 
         bytes memory data = abi.encode(msg.sender, params);
@@ -118,6 +118,5 @@ contract Swap is IUnlockCallback {
         if (balance > 0) {
             currency.transferOut(msg.sender, balance);
         }
-
     }
 }
