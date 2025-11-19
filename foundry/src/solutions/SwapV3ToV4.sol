@@ -51,9 +51,8 @@ contract SwapV3ToV4 {
             : (v4.key.currency1, v4.key.currency0);
 
         // Send v3.tokenIn to UniversalRouter
-        IERC20(v3.tokenIn).transferFrom(
-            msg.sender, address(router), v3.amountIn
-        );
+        IERC20(v3.tokenIn)
+            .transferFrom(msg.sender, address(router), v3.amountIn);
 
         // UniversalRouter commands and inputs
         bytes memory commands;
