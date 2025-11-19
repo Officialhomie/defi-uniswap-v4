@@ -36,7 +36,9 @@ contract Flash is IUnlockCallback {
             abi.decode(data, (address, uint256));
 
         // Borrow
-        poolManager.take({currency: currency, to: address(this), amount: amount});
+        poolManager.take({
+            currency: currency, to: address(this), amount: amount
+        });
 
         // You would write your flash loan logic here
         (bool ok,) = tester.call("");
