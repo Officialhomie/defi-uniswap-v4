@@ -12,8 +12,7 @@ import {PoolKey} from "../types/PoolKey.sol";
 import {UNIVERSAL_ROUTER, PERMIT2, WETH} from "../Constants.sol";
 
 interface IFlash {
-    function flash(address token, uint256 amount, bytes calldata data)
-        external;
+    function flash(address token, uint256 amount, bytes calldata data) external;
 }
 
 interface IFlashReceiver {
@@ -175,9 +174,7 @@ contract Liquidate is IFlashReceiver {
         router.execute{value: msgVal}(commands, inputs, block.timestamp);
     }
 
-    function approve(address token, uint160 amount, uint48 expiration)
-        private
-    {
+    function approve(address token, uint160 amount, uint48 expiration) private {
         IERC20(token).approve(address(permit2), uint256(amount));
         permit2.approve(token, address(router), amount, expiration);
     }
