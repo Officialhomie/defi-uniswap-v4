@@ -128,4 +128,46 @@ contract Router is TStore, IUnlockCallback {
     {
         // Write your code here
     }
+
+    function _swap(
+        PoolKey memory key,
+        bool zeroForOne,
+        int256 amountSpecified,
+        bytes memory hookData
+    ) private returns (int128 amount0, int128 amount1) {
+        int256 swapDelta = poolManager.swap({
+            key: key,
+            params: SwapParams({
+                zeroForOne: zeroForOne,
+                amountSpecified: amountSpecified,
+                sqrtPriceLimitX96: zeroForOne
+                    ? MIN_SQRT_PRICE + 1
+                    : MAX_SQRT_PRICE - 1
+            }),
+            hookData: hookData
+        });
+
+        BalanceDelta delta = BalanceDelta.wrap(swapDelta);
+        return (delta.amount0(), delta.amount1());
+    }
+
+    function _takeAndSettle(
+        address to,
+        address CurrencyIn,
+        address CurrencyOut,
+        uint256 amountIn,
+        uint256 amountOut
+    ) private {
+        poolManager.take({currency: CurrencyOut, to: to, amount: amountOut});
+
+        poolManager.sync(CurrencyIn);
+
+        if (CurrencyIn == address(0)) {
+            poolManager.settle{value: amountIn}();
+        } else {
+            IERC20(CurrencyIn).transfer(address(poolManager), amountIn);
+
+            poolManager.settle();
+        }
+    }
 }
