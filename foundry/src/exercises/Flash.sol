@@ -33,19 +33,22 @@ contract Flash is IUnlockCallback {
         returns (bytes memory)
     {
         // Write your code here
-        (address currency, uint256 amount) = abi.decode(data, (address, uint256));
+        (address currency, uint256 amount) =
+            abi.decode(data, (address, uint256));
 
-        poolManager.take({currency: currency, to: address(this), amount: amount});
+        poolManager.take({
+            currency: currency, to: address(this), amount: amount
+        });
 
         (bool ok,) = tester.call("");
 
         require(ok, "test failed");
 
         poolManager.sync(currency);
-        
-        if( currency == address(0)) {
+
+        if (currency == address(0)) {
             poolManager.settle{value: amount}();
-        }else{
+        } else {
             IERC20(currency).transfer(address(poolManager), amount);
             poolManager.settle();
         }
