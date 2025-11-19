@@ -18,7 +18,8 @@ contract Reader {
         assembly ("memory-safe") {
             mstore(0, and(target, 0xffffffffffffffffffffffffffffffffffffffff))
             mstore(
-                32, and(currency, 0xffffffffffffffffffffffffffffffffffffffff)
+                32,
+                and(currency, 0xffffffffffffffffffffffffffffffffffffffff)
             )
             slot := keccak256(0, 64)
         }
