@@ -49,10 +49,7 @@ contract SwapV3ToV4Test is Test, TestHelper {
         uint128 amountIn = 1e18;
         ex.swap({
             v3: SwapV3ToV4.V3Params({
-                tokenIn: WETH,
-                tokenOut: USDC,
-                poolFee: 3000,
-                amountIn: amountIn
+                tokenIn: WETH, tokenOut: USDC, poolFee: 3000, amountIn: amountIn
             }),
             v4: SwapV3ToV4.V4Params({key: poolKey, amountOutMin: 1})
         });
@@ -85,10 +82,7 @@ contract SwapV3ToV4Test is Test, TestHelper {
         uint128 amountIn = 1000 * 1e6;
         ex.swap({
             v3: SwapV3ToV4.V3Params({
-                tokenIn: USDC,
-                tokenOut: WETH,
-                poolFee: 3000,
-                amountIn: amountIn
+                tokenIn: USDC, tokenOut: WETH, poolFee: 3000, amountIn: amountIn
             }),
             v4: SwapV3ToV4.V4Params({key: poolKey, amountOutMin: 1})
         });
