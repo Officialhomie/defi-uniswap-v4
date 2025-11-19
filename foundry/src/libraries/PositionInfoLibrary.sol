@@ -23,11 +23,7 @@ library PositionInfoLibrary {
     uint8 internal constant TICK_UPPER_OFFSET = 32;
 
     /// @dev This poolId is NOT compatible with the poolId used in UniswapV4 core. It is truncated to 25 bytes, and just used to lookup PoolKey in the poolKeys mapping.
-    function poolId(PositionInfo info)
-        internal
-        pure
-        returns (bytes25 _poolId)
-    {
+    function poolId(PositionInfo info) internal pure returns (bytes25 _poolId) {
         assembly ("memory-safe") {
             _poolId := and(MASK_UPPER_200_BITS, info)
         }
@@ -90,14 +86,13 @@ library PositionInfoLibrary {
     ) internal pure returns (PositionInfo info) {
         bytes25 _poolId = bytes25(PoolId.unwrap(_poolKey.toId()));
         assembly {
-            info :=
+            info := or(
                 or(
-                    or(
-                        and(MASK_UPPER_200_BITS, _poolId),
-                        shl(TICK_UPPER_OFFSET, and(MASK_24_BITS, _tickUpper))
-                    ),
-                    shl(TICK_LOWER_OFFSET, and(MASK_24_BITS, _tickLower))
-                )
+                    and(MASK_UPPER_200_BITS, _poolId),
+                    shl(TICK_UPPER_OFFSET, and(MASK_24_BITS, _tickUpper))
+                ),
+                shl(TICK_LOWER_OFFSET, and(MASK_24_BITS, _tickLower))
+            )
         }
     }
 }
