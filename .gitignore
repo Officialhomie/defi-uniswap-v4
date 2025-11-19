@@ -1,1 +1,17 @@
 tmp
+
+# Documentation files
+notes/
+foundry/exercises/*.md
+*.md
+!README.md
+!foundry/README.md
+
+# Build artifacts
+foundry/cache/
+foundry/out/
+foundry/foundry.lock
+
+# Environment files
+.env
+.env.local
