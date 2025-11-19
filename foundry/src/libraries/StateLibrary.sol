@@ -30,8 +30,10 @@ library StateLibrary {
         // ---------- | fee  |protocolfee | tick  | sqrtPriceX96
         assembly ("memory-safe") {
             // bottom 160 bits of data
-            sqrtPriceX96 :=
-                and(data, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            sqrtPriceX96 := and(
+                data,
+                0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+            )
             // next 24 bits of data
             tick := signextend(2, shr(160, data))
             // next 24 bits of data
