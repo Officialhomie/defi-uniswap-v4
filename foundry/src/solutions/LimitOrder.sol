@@ -233,9 +233,8 @@ contract LimitOrder is TStore {
                 }
             } else {
                 require(msgVal == 0, "received ETH");
-                IERC20(currency).transferFrom(
-                    msgSender, address(poolManager), amountToPay
-                );
+                IERC20(currency)
+                    .transferFrom(msgSender, address(poolManager), amountToPay);
                 poolManager.settle();
             }
 
