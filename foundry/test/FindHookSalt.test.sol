@@ -43,8 +43,8 @@ contract FindHookSalt is Test {
             abi.encode(POOL_MANAGER),
             uint160(
                 Hooks.BEFORE_ADD_LIQUIDITY_FLAG
-                    | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG
-                    | Hooks.AFTER_SWAP_FLAG
+                    | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
+                    | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
             )
         );
 
