@@ -17,9 +17,10 @@ contract PosmExercises {
     // currency0 = ETH for this exercise
     constructor(address currency1) {
         IERC20(currency1).approve(PERMIT2, type(uint256).max);
-        IPermit2(PERMIT2).approve(
-            currency1, address(posm), type(uint160).max, type(uint48).max
-        );
+        IPermit2(PERMIT2)
+            .approve(
+                currency1, address(posm), type(uint160).max, type(uint48).max
+            );
     }
 
     receive() external payable {}
@@ -89,8 +90,7 @@ contract PosmExercises {
     }
 
     function burn(uint256 tokenId, uint128 amount0Min, uint128 amount1Min)
-        external
-    {
+        external {
         // Write your code here
     }
 }
