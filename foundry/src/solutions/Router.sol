@@ -364,7 +364,9 @@ contract Router is TStore, IUnlockCallback {
                 // price = Currency 1 / currency 0
                 // 0 for 1 = price decreases
                 // 1 for 0 = price increases
-                sqrtPriceLimitX96: zeroForOne ? MIN_SQRT_PRICE + 1 : MAX_SQRT_PRICE - 1
+                sqrtPriceLimitX96: zeroForOne
+                    ? MIN_SQRT_PRICE + 1
+                    : MAX_SQRT_PRICE - 1
             }),
             hookData: hookData
         });
