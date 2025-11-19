@@ -9,11 +9,10 @@ import {Hooks} from "../src/libraries/Hooks.sol";
 import {PoolId, PoolIdLibrary} from "../src/types/PoolId.sol";
 import {PoolKey} from "../src/types/PoolKey.sol";
 import {
-    SwapParams, ModifyLiquidityParams
+    SwapParams,
+    ModifyLiquidityParams
 } from "../src/types/PoolOperation.sol";
-import {
-    BalanceDelta, BalanceDeltaLibrary
-} from "../src/types/BalanceDelta.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "../src/types/BalanceDelta.sol";
 import {
     POOL_MANAGER,
     USDC,
@@ -158,9 +157,7 @@ contract CounterHookTest is Test {
             );
 
             poolManager.take({
-                currency: currencyOut,
-                to: address(this),
-                amount: amountOut
+                currency: currencyOut, to: address(this), amount: amountOut
             });
 
             poolManager.sync(currencyIn);
