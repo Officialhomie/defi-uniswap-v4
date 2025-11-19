@@ -24,7 +24,8 @@ library Hooks {
     uint160 internal constant BEFORE_SWAP_RETURNS_DELTA_FLAG = 1 << 3;
     uint160 internal constant AFTER_SWAP_RETURNS_DELTA_FLAG = 1 << 2;
     uint160 internal constant AFTER_ADD_LIQUIDITY_RETURNS_DELTA_FLAG = 1 << 1;
-    uint160 internal constant AFTER_REMOVE_LIQUIDITY_RETURNS_DELTA_FLAG = 1 << 0;
+    uint160 internal constant AFTER_REMOVE_LIQUIDITY_RETURNS_DELTA_FLAG = 1
+        << 0;
 
     struct Permissions {
         bool beforeInitialize;
@@ -51,7 +52,7 @@ library Hooks {
     ) internal pure {
         if (
             permissions.beforeInitialize
-                != self.hasPermission(BEFORE_INITIALIZE_FLAG)
+                    != self.hasPermission(BEFORE_INITIALIZE_FLAG)
                 || permissions.afterInitialize
                     != self.hasPermission(AFTER_INITIALIZE_FLAG)
                 || permissions.beforeAddLiquidity
@@ -62,19 +63,25 @@ library Hooks {
                     != self.hasPermission(BEFORE_REMOVE_LIQUIDITY_FLAG)
                 || permissions.afterRemoveLiquidity
                     != self.hasPermission(AFTER_REMOVE_LIQUIDITY_FLAG)
-                || permissions.beforeSwap != self.hasPermission(BEFORE_SWAP_FLAG)
+                || permissions.beforeSwap
+                    != self.hasPermission(BEFORE_SWAP_FLAG)
                 || permissions.afterSwap != self.hasPermission(AFTER_SWAP_FLAG)
                 || permissions.beforeDonate
                     != self.hasPermission(BEFORE_DONATE_FLAG)
-                || permissions.afterDonate != self.hasPermission(AFTER_DONATE_FLAG)
+                || permissions.afterDonate
+                    != self.hasPermission(AFTER_DONATE_FLAG)
                 || permissions.beforeSwapReturnDelta
                     != self.hasPermission(BEFORE_SWAP_RETURNS_DELTA_FLAG)
                 || permissions.afterSwapReturnDelta
                     != self.hasPermission(AFTER_SWAP_RETURNS_DELTA_FLAG)
                 || permissions.afterAddLiquidityReturnDelta
-                    != self.hasPermission(AFTER_ADD_LIQUIDITY_RETURNS_DELTA_FLAG)
+                    != self.hasPermission(
+                        AFTER_ADD_LIQUIDITY_RETURNS_DELTA_FLAG
+                    )
                 || permissions.afterRemoveLiquidityReturnDelta
-                    != self.hasPermission(AFTER_REMOVE_LIQUIDITY_RETURNS_DELTA_FLAG)
+                    != self.hasPermission(
+                        AFTER_REMOVE_LIQUIDITY_RETURNS_DELTA_FLAG
+                    )
         ) {
             revert HookAddressNotValid(self);
         }
