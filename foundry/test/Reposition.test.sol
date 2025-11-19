@@ -44,9 +44,7 @@ contract RepositionTest is Test, TestUtil, PosmHelper {
         int24 upper = tickLower + 2 * TICK_SPACING;
 
         uint256 newTokenId = ex.reposition({
-            tokenId: tokenId,
-            tickLower: lower,
-            tickUpper: upper
+            tokenId: tokenId, tickLower: lower, tickUpper: upper
         });
 
         (address owner,, int24 posTickLower, int24 posTickUpper, uint128 liq) =
@@ -63,9 +61,7 @@ contract RepositionTest is Test, TestUtil, PosmHelper {
         int24 upper = tickLower - 10 * TICK_SPACING;
 
         uint256 newTokenId = ex.reposition({
-            tokenId: tokenId,
-            tickLower: lower,
-            tickUpper: upper
+            tokenId: tokenId, tickLower: lower, tickUpper: upper
         });
 
         (address owner,, int24 posTickLower, int24 posTickUpper, uint128 liq) =
@@ -82,9 +78,7 @@ contract RepositionTest is Test, TestUtil, PosmHelper {
         int24 upper = tickLower + 20 * TICK_SPACING;
 
         uint256 newTokenId = ex.reposition({
-            tokenId: tokenId,
-            tickLower: lower,
-            tickUpper: upper
+            tokenId: tokenId, tickLower: lower, tickUpper: upper
         });
 
         (address owner,, int24 posTickLower, int24 posTickUpper, uint128 liq) =
