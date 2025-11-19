@@ -17,7 +17,8 @@ contract PosmHelper {
     using PoolIdLibrary for PoolKey;
     using PositionInfoLibrary for PositionInfo;
 
-    IPositionManager internal constant posm = IPositionManager(POSITION_MANAGER);
+    IPositionManager internal constant posm =
+        IPositionManager(POSITION_MANAGER);
     IERC20 internal constant usdc = IERC20(USDC);
 
     PoolKey internal key;
@@ -27,9 +28,8 @@ contract PosmHelper {
     // currency0 = ETH for this exercise
     constructor() {
         IERC20(USDC).approve(PERMIT2, type(uint256).max);
-        IPermit2(PERMIT2).approve(
-            USDC, address(posm), type(uint160).max, type(uint48).max
-        );
+        IPermit2(PERMIT2)
+            .approve(USDC, address(posm), type(uint160).max, type(uint48).max);
 
         key = PoolKey({
             currency0: address(0),
