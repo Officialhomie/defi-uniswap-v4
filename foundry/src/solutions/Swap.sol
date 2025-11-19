@@ -90,9 +90,7 @@ contract Swap is IUnlockCallback {
         require(amountOut >= params.amountOutMin, "amount out < min");
 
         poolManager.take({
-            currency: currencyOut,
-            to: msgSender,
-            amount: amountOut
+            currency: currencyOut, to: msgSender, amount: amountOut
         });
 
         poolManager.sync(currencyIn);
