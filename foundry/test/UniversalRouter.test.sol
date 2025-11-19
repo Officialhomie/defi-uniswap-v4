@@ -41,10 +41,7 @@ contract UniversalRouterTest is Test, TestHelper {
 
         uint128 amountIn = 1e18;
         ex.swap{value: uint256(amountIn)}({
-            key: poolKey,
-            amountIn: amountIn,
-            amountOutMin: 1,
-            zeroForOne: true
+            key: poolKey, amountIn: amountIn, amountOutMin: 1, zeroForOne: true
         });
 
         helper.set("After swap USDC", usdc.balanceOf(address(this)));
@@ -67,10 +64,7 @@ contract UniversalRouterTest is Test, TestHelper {
 
         uint128 amountIn = 1000 * 1e6;
         ex.swap{value: uint256(amountIn)}({
-            key: poolKey,
-            amountIn: amountIn,
-            amountOutMin: 1,
-            zeroForOne: false
+            key: poolKey, amountIn: amountIn, amountOutMin: 1, zeroForOne: false
         });
 
         helper.set("After swap USDC", usdc.balanceOf(address(this)));
