@@ -60,10 +60,7 @@ contract SubscriberTest is Test, TestUtil, PosmHelper {
         assertEq(sub.balanceOf(poolId, address(this)), 2 * liquidity);
 
         decreaseLiquidity({
-            tokenId: tokenId,
-            liquidity: liquidity,
-            amount0Min: 1,
-            amount1Min: 1
+            tokenId: tokenId, liquidity: liquidity, amount0Min: 1, amount1Min: 1
         });
 
         assertEq(sub.balanceOf(poolId, address(this)), liquidity);
