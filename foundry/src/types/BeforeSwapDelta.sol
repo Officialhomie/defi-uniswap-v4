@@ -11,8 +11,10 @@ function toBeforeSwapDelta(int128 deltaSpecified, int128 deltaUnspecified)
     returns (BeforeSwapDelta beforeSwapDelta)
 {
     assembly ("memory-safe") {
-        beforeSwapDelta :=
-            or(shl(128, deltaSpecified), and(sub(shl(128, 1), 1), deltaUnspecified))
+        beforeSwapDelta := or(
+            shl(128, deltaSpecified),
+            and(sub(shl(128, 1), 1), deltaUnspecified)
+        )
     }
 }
 
