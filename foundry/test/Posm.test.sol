@@ -148,10 +148,7 @@ contract PositionManagerTest is Test, TestUtil {
         helper.set("USDC before", usdc.balanceOf(address(ex)));
 
         ex.decreaseLiquidity({
-            tokenId: tokenId,
-            liquidity: liquidity,
-            amount0Min: 1,
-            amount1Min: 1
+            tokenId: tokenId, liquidity: liquidity, amount0Min: 1, amount1Min: 1
         });
 
         helper.set("ETH after", address(ex).balance);
