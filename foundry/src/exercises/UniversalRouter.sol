@@ -33,9 +33,7 @@ contract UniversalRouterExercises {
         bytes[] memory params = new bytes[](3);
     }
 
-    function approve(address token, uint160 amount, uint48 expiration)
-        private
-    {
+    function approve(address token, uint160 amount, uint48 expiration) private {
         IERC20(token).approve(address(permit2), uint256(amount));
         permit2.approve(token, address(router), amount, expiration);
     }
