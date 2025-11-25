@@ -121,6 +121,8 @@ contract LimitOrder is TStore {
         int24 tick
     ) external onlyPoolManager returns (bytes4) {
         // Write your code here
+        PoolId poolId = key.toId();
+        ticks[poolId] = tick;
         return this.afterInitialize.selector;
     }
 
@@ -149,8 +151,126 @@ contract LimitOrder is TStore {
 
         if (action == ADD_LIQUIDITY) {
             // Write your code here
+            (
+                address msgSender,
+                uint256 msgVal,
+                PoolKey memory key,
+                int24 tickLower,
+                bool zeroForOne,
+                uint128 liquidity
+            ) = abi.decode(
+                data, (address, uint256, PoolKey, int24, bool, uint128)
+            );
+
+            (int256 d,) = poolManager.modifyLiquidity({
+                key: key,
+                params: ModifyLiquidityParams({
+                    tickLower: tickLower,
+                    tickUpper: tickLower + key.tickSpacing,
+                    liquidityDelta: int256(uint256(liquidity)),
+                    salt: bytes32(0)
+                }),
+                hookData: ""
+            });
+
+            BalanceDelta delta = BalanceDelta.wrap(d);
+
+            int128 amount0 = delta.amount0();
+            int128 amount1 = delta.amount1();
+
+            address currency;
+            uint256 amountToPay;
+
+            if (zeroForOne) {
+                require(amount0 < 0 && amount1 == 0, "Tick Crossed");
+            } else {
+                require(amount0 == 0 && amount1 < 0, "Tick Crossed");
+            }
+
+            currency = zeroForOne ? key.currency0 : key.currency1;
+            amountToPay =
+                zeroForOne ? (-amount0).toUint256() : (-amount1).toUint256();
+
+            poolManager.sync(currency);
+
+            bool isETH = currency == address(0);
+
+            if (isETH) {
+                require(msgVal >= amountToPay, "Not enough ETH sent");
+
+                poolManager.settle{value: amountToPay}();
+
+                bool hasExtra = msgVal > amountToPay;
+
+                uint256 extra = msgVal - amountToPay;
+
+                if (hasExtra) {
+                    (bool ok,) = msgSender.call{value: extra}("");
+
+                    require(ok, "Send ETH Failed");
+                }
+            } else {
+                require(msgVal == 0, "received ETH");
+
+                IERC20(currency)
+                    .transferFrom(msgSender, address(poolManager), amountToPay);
+
+                poolManager.settle();
+            }
+
+            return "";
         } else if (action == REMOVE_LIQUIDITY) {
             // Write your code here
+            (
+                PoolKey memory key,
+                int24 tickLower, 
+                uint128 size 
+            ) = abi.decode(data, (PoolKey, int24, uint128));
+
+            (int256 d, int256 fee) = poolManager.modifyLiquidity({
+                key: key,
+                params: ModifyLiquidityParams({
+                    tickLower: tickLower,
+                    tickUpper: tickLower + key.tickSpacing,
+                    liquidityDelta: -int256(uint256(size)),
+                    salt: bytes32(0)
+                }),
+                hookData: ""
+            });
+
+            BalanceDelta delta = BalanceDelta.wrap(d);
+            uint256 amount0 = 0;
+            uint256 amount1 = 0;
+
+            int128 d0 = delta.amount0();
+            int128 d1 = delta.amount1();
+
+            if (d0 > 0) {
+                amount0 = uint256(uint128(d0));
+                poolManager.take(key.currency0, address(this), amount0);
+            }
+
+            if (d1 > 0) {
+                amount1 = uint256(uint128(d1));
+                poolManager.take(key.currency1, address(this), amount1);
+            }
+
+            BalanceDelta fees = BalanceDelta.wrap(fee);
+
+            uint256 fee0 = 0;
+            uint256 fee1 = 0;
+
+            int128 f0 = fees.amount0();
+            int128 f1 = fees.amount1();
+
+            if (f0 > 0) {
+                fee0 = uint256(uint128(f0));
+            }
+            if (f1 > 0) {
+                fee1 = uint256(int128(f1));
+            }
+
+            return abi.encode(amount0, amount1, fee0, fee1);
         }
 
         revert("Invalid action");
@@ -163,6 +283,41 @@ contract LimitOrder is TStore {
         uint128 liquidity
     ) external payable setAction(ADD_LIQUIDITY) {
         // Write your code here
+        require(tickLower % key.tickSpacing == 0, "invalid tick lower");
+        require(liquidity > 0, "liquidity = 0");
+
+        PoolId poolId = key.toId();
+        int24 currentTick = _getTick(poolId);
+        int24 tickUpper = tickLower + key.tickSpacing;
+
+        require(
+            currentTick < tickLower || currentTick >= tickUpper, "Tick crossed"
+        );
+
+        bytes memory data = abi.encode(
+            msg.sender, msg.value, key, tickLower, zeroForOne, liquidity
+        );
+
+        poolManager.unlock(data);
+
+        bytes32 id = getBucketId(poolId, tickLower, zeroForOne);
+
+        uint256 slot = slots[id];
+
+        Bucket storage bucket = buckets[id][slot];
+
+        bucket.liquidity += liquidity;
+
+        bucket.sizes[msg.sender] += liquidity;
+
+        emit Place(
+            PoolId.unwrap(poolId),
+            slot,
+            msg.sender,
+            tickLower,
+            zeroForOne,
+            liquidity
+        );
     }
 
     function cancel(PoolKey calldata key, int24 tickLower, bool zeroForOne)
@@ -170,6 +325,61 @@ contract LimitOrder is TStore {
         setAction(REMOVE_LIQUIDITY)
     {
         // Write your code here
+        PoolId poolId = key.toId();
+        bytes32 id = getBucketId(poolId, tickLower, zeroForOne);
+
+        uint256 slot = slots[id];
+
+        Bucket storage bucket = buckets[id][slot];
+
+        require(!bucket.filled, "bucket filled");
+
+        uint128 size = bucket.sizes[msg.sender];
+
+        require(size > 0, "No amount sized to cancel");
+
+        bucket.liquidity -= size;
+        bucket.sizes[msg.sender] = 0;
+        bytes memory data = abi.encode(key, tickLower, size);
+
+        bytes memory res = poolManager.unlock(data);
+
+        (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) =
+            abi.decode(res, (uint256, uint256, uint256, uint256));
+
+        bool stillHasLiq = bucket.liquidity > 0;
+
+        if (stillHasLiq) {
+            // Add fees back to bucket
+            bucket.amount0 += fee0;
+            bucket.amount1 += fee1;
+
+            // Return principal minus fees
+            uint256 refund0 = amount0 > fee0 ? amount0 - fee0 : 0;
+            if (refund0 > 0) key.currency0.transferOut(msg.sender, refund0);
+
+            uint256 refund1 = amount1 > fee1 ? amount1 - fee1 : 0;
+            if (refund1 > 0) key.currency1.transferOut(msg.sender, refund1);
+
+        } else {
+            // User receives all their amounts + accumulated bucket amounts
+            amount0 += bucket.amount0;
+            bucket.amount0 = 0;
+            if (amount0 > 0) key.currency0.transferOut(msg.sender, amount0);
+
+            amount1 += bucket.amount1;
+            bucket.amount1 = 0;
+            if (amount1 > 0) key.currency1.transferOut(msg.sender, amount1);
+        }
+
+        emit Cancel(
+            PoolId.unwrap(poolId),
+            slot,
+            msg.sender,
+            tickLower,
+            zeroForOne,
+            size
+        );
     }
 
     function take(
