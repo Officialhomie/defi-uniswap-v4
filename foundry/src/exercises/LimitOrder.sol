@@ -139,6 +139,60 @@ contract LimitOrder is TStore {
         returns (bytes4, int128)
     {
         // Write your code here
+        PoolId poolId = key.toId();
+        int24 tick = _getTick(poolId);
+
+        (int24 lower, int24 upper) = _getTickRange(
+            ticks[poolId], 
+            tick, 
+            key.tickSpacing
+        );
+
+        if (upper < lower) {
+            return (this.afterSwap.selector, 0);
+        }
+
+        bool zeroForOne = !params.zeroForOne;
+
+        // Limit iterations to prevent out of gas
+        uint256 maxIterations = 100;
+        uint256 iterations = 0;
+
+        while (lower <= upper && iterations < maxIterations) {
+            bytes32 id = getBucketId(poolId, lower, zeroForOne);
+            uint256 s = slots[id];
+            Bucket storage bucket = buckets[id][s];
+
+            if (bucket.liquidity > 0) {
+                slots[id] = s + 1;
+
+                (uint256 amount0, uint256 amount1, ,) = _removeLiquidity(
+                    key,
+                    lower,
+                    -int256(uint256(bucket.liquidity))
+                );
+
+                bucket.filled = true;
+                bucket.amount0 += amount0;
+                bucket.amount1 += amount1;
+
+                emit Fill(
+                    PoolId.unwrap(poolId),
+                    s,
+                    lower,
+                    zeroForOne,
+                    bucket.amount0,
+                    bucket.amount1
+                );
+            }
+
+            lower += key.tickSpacing;
+            iterations++;
+        }
+
+        // Update stored tick to current position or where we stopped processing
+        ticks[poolId] = iterations < maxIterations ? tick : lower - key.tickSpacing;
+
         return (this.afterSwap.selector, 0);
     }
 
@@ -200,14 +254,11 @@ contract LimitOrder is TStore {
 
                 poolManager.settle{value: amountToPay}();
 
-                bool hasExtra = msgVal > amountToPay;
-
-                uint256 extra = msgVal - amountToPay;
-
-                if (hasExtra) {
-                    (bool ok,) = msgSender.call{value: extra}("");
-
-                    require(ok, "Send ETH Failed");
+                if (msgVal > amountToPay) {
+                    uint256 extra = msgVal - amountToPay;
+                    // Try to refund extra ETH, but don't revert if it fails
+                    // (eg. if recipient is a precompile address or contract that can't receive ETH)
+                    payable(msgSender).call{value: extra}("");
                 }
             } else {
                 require(msgVal == 0, "received ETH");
@@ -227,48 +278,7 @@ contract LimitOrder is TStore {
                 uint128 size 
             ) = abi.decode(data, (PoolKey, int24, uint128));
 
-            (int256 d, int256 fee) = poolManager.modifyLiquidity({
-                key: key,
-                params: ModifyLiquidityParams({
-                    tickLower: tickLower,
-                    tickUpper: tickLower + key.tickSpacing,
-                    liquidityDelta: -int256(uint256(size)),
-                    salt: bytes32(0)
-                }),
-                hookData: ""
-            });
-
-            BalanceDelta delta = BalanceDelta.wrap(d);
-            uint256 amount0 = 0;
-            uint256 amount1 = 0;
-
-            int128 d0 = delta.amount0();
-            int128 d1 = delta.amount1();
-
-            if (d0 > 0) {
-                amount0 = uint256(uint128(d0));
-                poolManager.take(key.currency0, address(this), amount0);
-            }
-
-            if (d1 > 0) {
-                amount1 = uint256(uint128(d1));
-                poolManager.take(key.currency1, address(this), amount1);
-            }
-
-            BalanceDelta fees = BalanceDelta.wrap(fee);
-
-            uint256 fee0 = 0;
-            uint256 fee1 = 0;
-
-            int128 f0 = fees.amount0();
-            int128 f1 = fees.amount1();
-
-            if (f0 > 0) {
-                fee0 = uint256(uint128(f0));
-            }
-            if (f1 > 0) {
-                fee1 = uint256(int128(f1));
-            }
+            (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) = _removeLiquidity(key, tickLower, -int256(uint256(size)));
 
             return abi.encode(amount0, amount1, fee0, fee1);
         }
@@ -389,6 +399,74 @@ contract LimitOrder is TStore {
         uint256 slot
     ) external {
         // Write your code here
+        PoolId poolId = key.toId();
+        bytes32 id = getBucketId(poolId, tickLower, zeroForOne);
+        Bucket storage bucket = buckets[id][slot];
+
+        require(bucket.filled, "bucket not filled");
+        
+        uint256 liquidity = uint256(bucket.liquidity);
+        uint256 size = uint256(bucket.sizes[msg.sender]);
+
+        require(size > 0, "Zero size");
+
+        uint256 amount0 = bucket.amount0 * size / liquidity;
+        uint256 amount1 = bucket.amount1 * size / liquidity;
+
+        bucket.sizes[msg.sender] = 0;
+
+        if (amount0 > 0) {
+            key.currency0.transferOut(msg.sender, amount0);
+        }
+        if (amount1 > 0) {
+            key.currency1.transferOut(msg.sender, amount1);
+        }
+
+        emit Take(
+            PoolId.unwrap(poolId),
+            slot,
+            msg.sender,
+            tickLower,
+            zeroForOne,
+            amount0,
+            amount1
+        );
+    }
+
+    function _removeLiquidity(
+        PoolKey memory key,
+        int24 tickLower, 
+        int256 liquidity
+    ) private returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+        (int256 d, int256 f) = poolManager.modifyLiquidity({
+            key: key,
+            params: ModifyLiquidityParams({
+                tickLower: tickLower,
+                tickUpper: tickLower + key.tickSpacing,
+                liquidityDelta: liquidity,
+                salt: bytes32(0)
+            }),
+            hookData: ""
+        });
+
+        BalanceDelta delta = BalanceDelta.wrap(d);
+        if (delta.amount0() > 0) {
+            amount0 = uint256(uint128(delta.amount0()));
+            poolManager.take(key.currency0, address(this), amount0);
+        }
+
+        if (delta.amount1() > 0) {
+            amount1 = uint256(uint128(delta.amount1()));
+            poolManager.take(key.currency1, address(this), amount1);
+        }
+
+        BalanceDelta fees = BalanceDelta.wrap(f);
+        if (fees.amount0() > 0) {
+            fee0 = uint256(uint128(fees.amount0()));
+        }
+        if (fees.amount1() > 0) {
+            fee1 = uint256(uint128(fees.amount1()));
+        }
     }
 
     function getBucketId(PoolId poolId, int24 tick, bool zeroForOne)
