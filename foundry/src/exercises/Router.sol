@@ -91,37 +91,76 @@ contract Router is TStore, IUnlockCallback {
         uint256 action = _getAction();
         // Write your code here
         if (action == SWAP_EXACT_IN_SINGLE) {
-            (address msgSender, ExactInputSingleParams memory params) = abi.decode(data, (address, ExactInputSingleParams));
+            (address msgSender, ExactInputSingleParams memory params) =
+                abi.decode(data, (address, ExactInputSingleParams));
 
-            (int128 amount0, int128 amount1) = _swap(params.poolKey, params.zeroForOne, -(params.amountIn.toInt256()), params.hookData);
+            (int128 amount0, int128 amount1) = _swap(
+                params.poolKey,
+                params.zeroForOne,
+                -(params.amountIn.toInt256()),
+                params.hookData
+            );
 
-            (address currencyIn, address currencyOut, uint256 amountIn, uint256 amountOut) = params.zeroForOne ? 
-            (params.poolKey.currency0, params.poolKey.currency1, -(amount0).toUint256(), amount1.toUint256()) : 
-            (params.poolKey.currency1, params.poolKey.currency0, -(amount1).toUint256(), amount0.toUint256());
+            (
+                address currencyIn,
+                address currencyOut,
+                uint256 amountIn,
+                uint256 amountOut
+            ) = params.zeroForOne
+                ? (
+                    params.poolKey.currency0,
+                    params.poolKey.currency1,
+                    (-amount0).toUint256(),
+                    amount1.toUint256()
+                )
+                : (
+                    params.poolKey.currency1,
+                    params.poolKey.currency0,
+                    (-amount1).toUint256(),
+                    amount0.toUint256()
+                );
 
             require(amountOut >= params.amountOutMin, "amount out < min");
 
-
-            _takeAndSettle(msgSender, currencyIn, currencyOut, amountIn, amountOut);
+            _takeAndSettle(
+                msgSender, currencyIn, currencyOut, amountIn, amountOut
+            );
 
             return abi.encode(amountOut);
         } else if (action == SWAP_EXACT_OUT_SINGLE) {
-            (address msgSender, ExactOutputSingleParams memory params) = abi.decode(data, (address, ExactOutputSingleParams));
+            (address msgSender, ExactOutputSingleParams memory params) =
+                abi.decode(data, (address, ExactOutputSingleParams));
 
-            (int128 amount0, int128 amount1) = _swap(params.poolKey, params.zeroForOne, params.amountOut.toInt256(), params.hookData);
+            (int128 amount0, int128 amount1) = _swap(
+                params.poolKey,
+                params.zeroForOne,
+                params.amountOut.toInt256(),
+                params.hookData
+            );
 
-            (address currencyIn, address currencyOut, uint256 amountIn, uint256 amountOut) = params.zeroForOne ? 
-            (params.poolKey.currency0, params.poolKey.currency1, (amount0).toUint256(), -(amount1).toUint256()) : 
-            (params.poolKey.currency1, params.poolKey.currency0, (amount1).toUint256(), -(amount0).toUint256());
+            (
+                address currencyIn,
+                address currencyOut,
+                uint256 amountIn,
+                uint256 amountOut
+            ) = params.zeroForOne
+                ? (
+                    params.poolKey.currency0,
+                    params.poolKey.currency1,
+                    (amount0).toUint256(),
+                    (-amount1).toUint256()
+                )
+                : (
+                    params.poolKey.currency1,
+                    params.poolKey.currency0,
+                    (amount1).toUint256(),
+                    (-amount0).toUint256()
+                );
 
             require(amountIn <= params.amountInMax, "Amount in > max");
 
             _takeAndSettle(
-                msgSender, 
-                currencyIn, 
-                currencyOut, 
-                amountIn, 
-                amountOut
+                msgSender, currencyIn, currencyOut, amountIn, amountOut
             );
 
             return abi.encode(amountIn);
@@ -132,8 +171,8 @@ contract Router is TStore, IUnlockCallback {
             uint256 n = params.path.length;
             address currencyIn = params.currencyIn;
             int256 amountIn = params.amountIn.toInt256();
+
             for (uint256 i = 0; i < n; i++) {
-                
                 PathKey memory path = params.path[i];
 
                 (address currency0, address currency1) = path.currency
@@ -220,7 +259,7 @@ contract Router is TStore, IUnlockCallback {
 
             return abi.encode(uint256(amountOut));
         }
-        
+
         revert UnsupportedAction(action);
     }
 
@@ -231,7 +270,9 @@ contract Router is TStore, IUnlockCallback {
         returns (uint256 amountOut)
     {
         // Write your code here
-        address currencyIn = params.zeroForOne ? params.poolKey.currency0 : params.poolKey.currency1;
+        address currencyIn = params.zeroForOne
+            ? params.poolKey.currency0
+            : params.poolKey.currency1;
 
         currencyIn.transferIn(msg.sender, params.amountIn);
 
@@ -252,7 +293,9 @@ contract Router is TStore, IUnlockCallback {
     {
         // Write your code here
 
-        address currencyIn = params.zeroForOne ? params.poolKey.currency0 : params.poolKey.currency1;
+        address currencyIn = params.zeroForOne
+            ? params.poolKey.currency0
+            : params.poolKey.currency1;
 
         currencyIn.transferIn(msg.sender, params.amountInMax);
 
@@ -349,7 +392,7 @@ contract Router is TStore, IUnlockCallback {
     function _refund(address currency, address to) private returns (uint256) {
         uint256 balance = currency.balanceOf(address(this));
 
-        if (balance > 0)  {
+        if (balance > 0) {
             currency.transferOut(to, balance);
         }
 
