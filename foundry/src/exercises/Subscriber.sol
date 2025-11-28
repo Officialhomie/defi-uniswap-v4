@@ -57,10 +57,25 @@ contract Subscriber is ISubscriber, Token {
         onlyPositionManager
     {
         // Write your code here
+
+        (bytes32 poolId, address owner, uint128 liquidity) = getInfo(tokenId);
+        require(liquidity > 0, "liquidity is 0");
+
+        _mint(poolId, owner, liquidity);
+
+        poolIds[tokenId] = poolId;
+        ownerOf[tokenId] = owner;
     }
 
     function notifyUnsubscribe(uint256 tokenId) external onlyPositionManager {
         // Write your code here
+        bytes32 poolId = poolIds[tokenId];
+        address owner = ownerOf[tokenId];
+
+        _burn(poolId, owner, balanceOf[poolId][owner]);
+
+        delete poolIds[tokenId];
+        delete ownerOf[tokenId];
     }
 
     function notifyBurn(
@@ -71,6 +86,14 @@ contract Subscriber is ISubscriber, Token {
         int256 feesAccrued
     ) external onlyPositionManager {
         // Write your code here
+
+        bytes32 poolId = poolIds[tokenId];
+        address storedOwner = ownerOf[tokenId];
+
+        _burn(poolId, storedOwner, balanceOf[poolId][storedOwner]);
+
+        delete poolIds[tokenId];
+        delete ownerOf[tokenId];
     }
 
     function notifyModifyLiquidity(
@@ -79,6 +102,19 @@ contract Subscriber is ISubscriber, Token {
         int256 feesAccrued
     ) external onlyPositionManager {
         // Write your code here
+        bytes32 poolId = poolIds[tokenId];
+        address owner = ownerOf[tokenId];
+
+        if (liquidityChange > 0) {
+            _mint(poolId, owner, uint256(liquidityChange));
+        } else {
+            uint256 burnAmount = min(
+                uint256(-liquidityChange),
+                balanceOf[poolId][owner]
+            );
+
+            _burn(poolId, owner, burnAmount);
+        }
     }
 
     function min(uint256 x, uint256 y) private pure returns (uint256) {
