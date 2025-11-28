@@ -25,8 +25,7 @@ contract Token {
 contract Subscriber is ISubscriber, Token {
     using PoolIdLibrary for PoolKey;
     // PositionManager
-
-    IPositionManager public immutable posm = IPositionManager(POSITION_MANAGER);
+    IPositionManager public immutable posm;
     mapping(uint256 tokenId => bytes32 poolId) private poolIds;
     mapping(uint256 tokenId => address owner) private ownerOf;
 
@@ -108,10 +107,8 @@ contract Subscriber is ISubscriber, Token {
         if (liquidityChange > 0) {
             _mint(poolId, owner, uint256(liquidityChange));
         } else {
-            uint256 burnAmount = min(
-                uint256(-liquidityChange),
-                balanceOf[poolId][owner]
-            );
+            uint256 burnAmount =
+                min(uint256(-liquidityChange), balanceOf[poolId][owner]);
 
             _burn(poolId, owner, burnAmount);
         }
