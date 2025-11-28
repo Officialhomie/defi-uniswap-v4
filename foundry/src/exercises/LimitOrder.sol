@@ -142,11 +142,8 @@ contract LimitOrder is TStore {
         PoolId poolId = key.toId();
         int24 tick = _getTick(poolId);
 
-        (int24 lower, int24 upper) = _getTickRange(
-            ticks[poolId], 
-            tick, 
-            key.tickSpacing
-        );
+        (int24 lower, int24 upper) =
+            _getTickRange(ticks[poolId], tick, key.tickSpacing);
 
         if (upper < lower) {
             return (this.afterSwap.selector, 0);
@@ -166,10 +163,8 @@ contract LimitOrder is TStore {
             if (bucket.liquidity > 0) {
                 slots[id] = s + 1;
 
-                (uint256 amount0, uint256 amount1, ,) = _removeLiquidity(
-                    key,
-                    lower,
-                    -int256(uint256(bucket.liquidity))
+                (uint256 amount0, uint256 amount1,,) = _removeLiquidity(
+                    key, lower, -int256(uint256(bucket.liquidity))
                 );
 
                 bucket.filled = true;
@@ -191,7 +186,8 @@ contract LimitOrder is TStore {
         }
 
         // Update stored tick to current position or where we stopped processing
-        ticks[poolId] = iterations < maxIterations ? tick : lower - key.tickSpacing;
+        ticks[poolId] =
+            iterations < maxIterations ? tick : lower - key.tickSpacing;
 
         return (this.afterSwap.selector, 0);
     }
@@ -272,13 +268,11 @@ contract LimitOrder is TStore {
             return "";
         } else if (action == REMOVE_LIQUIDITY) {
             // Write your code here
-            (
-                PoolKey memory key,
-                int24 tickLower, 
-                uint128 size 
-            ) = abi.decode(data, (PoolKey, int24, uint128));
+            (PoolKey memory key, int24 tickLower, uint128 size) =
+                abi.decode(data, (PoolKey, int24, uint128));
 
-            (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) = _removeLiquidity(key, tickLower, -int256(uint256(size)));
+            (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) =
+                _removeLiquidity(key, tickLower, -int256(uint256(size)));
 
             return abi.encode(amount0, amount1, fee0, fee1);
         }
@@ -370,7 +364,6 @@ contract LimitOrder is TStore {
 
             uint256 refund1 = amount1 > fee1 ? amount1 - fee1 : 0;
             if (refund1 > 0) key.currency1.transferOut(msg.sender, refund1);
-
         } else {
             // User receives all their amounts + accumulated bucket amounts
             amount0 += bucket.amount0;
@@ -383,12 +376,7 @@ contract LimitOrder is TStore {
         }
 
         emit Cancel(
-            PoolId.unwrap(poolId),
-            slot,
-            msg.sender,
-            tickLower,
-            zeroForOne,
-            size
+            PoolId.unwrap(poolId), slot, msg.sender, tickLower, zeroForOne, size
         );
     }
 
@@ -404,7 +392,7 @@ contract LimitOrder is TStore {
         Bucket storage bucket = buckets[id][slot];
 
         require(bucket.filled, "bucket not filled");
-        
+
         uint256 liquidity = uint256(bucket.liquidity);
         uint256 size = uint256(bucket.sizes[msg.sender]);
 
@@ -435,9 +423,12 @@ contract LimitOrder is TStore {
 
     function _removeLiquidity(
         PoolKey memory key,
-        int24 tickLower, 
+        int24 tickLower,
         int256 liquidity
-    ) private returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    )
+        private
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         (int256 d, int256 f) = poolManager.modifyLiquidity({
             key: key,
             params: ModifyLiquidityParams({
