@@ -34,5 +34,35 @@ contract Reposition {
         (PoolKey memory key,) = posm.getPoolAndPositionInfo(tokenId);
 
         // Write your code here
+        bytes memory actions = abi.encodePacked(
+            uint8(Actions.BURN_POSITION),
+            uint8(Actions.MINT_POSITION_FROM_DELTAS),
+            uint8(Actions.TAKE_PAIR)
+        );
+
+        bytes[] memory params = new bytes[](3);
+
+        params[0] = abi.encode(tokenId, 0, 0, "");
+
+        params[1] = abi.encode(
+            key,
+            tickLower,
+            tickUpper,
+            type(uint128).max,
+            type(uint128).max,
+            owner,
+            ""
+        );
+
+        params[2] = abi.encode(
+            key.currency0,
+            key.currency1,
+            owner
+        );
+
+        newTokenId = posm.nextTokenId();
+
+        posm.modifyLiquidities{value: address(this).balance}(
+            abi.encode(actions, params), block.timestamp);
     }
 }
