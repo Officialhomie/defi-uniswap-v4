@@ -55,6 +55,77 @@ contract SwapV3ToV4 {
         // UniversalRouter commands and inputs
         bytes memory commands;
         bytes[] memory inputs;
+
+        if (v3.tokenOut == WETH) {
+            commands = abi.encodePacked(
+                uint8(Commands.V3_SWAP_EXACT_IN),
+                uint8(Commands.UNWRAP_WETH),
+                uint8(Commands.V4_SWAP)
+            );
+        } else {
+            commands = abi.encodePacked(
+                uint8(Commands.V3_SWAP_EXACT_IN, uint8(Commands.V4_SWAP));
+            );
+        }
+
+        // prepare 3 inputs for each of the commands (v3 swap, v4 swap)
+        inputs = new bytes[](commands.length);
+
+        
+        // inputs for the v3 swap
+        inputs[0] = abi.encode(
+            address(router),
+            ActionConstants.CONTRACT_BALANCE,
+            uint256(1), // flag to send min amount of tokens to router
+            abi.encodePacked(v3.tokenIn, v3.poolFee, v3.tokenOut),
+            false // since payer is not user
+        );
+
+        // inputs for the unwrap weth
+        if (v3.tokenOut == WETH) {
+            inputs[1] = abi.encode(
+                address(router),
+                uint256(1) // flag to send min amount of WETH to router
+            )
+        }
+
+        // prepare actions and params for the v4 swap
+        bytes memory actions = abi.encodePacked(
+            uint8(Actions.SETTLE),
+            uint8(Actions.SWAP_EXACT_IN_SINGLE),
+            uint8(Actions.TAKE_ALL)
+        );
+
+        // prepare 3 encoded params for the 3 individual actions
+        bytes[] memory params = new bytes[](3);
+
+        params[0] = abi.encode(
+            v4currencyIn,
+            uint8(ActionConstants.CONTRACT_BALANCE), // use the balance of the contract as the amount to settle
+            false
+        );
+
+        params[1] = abi.encode(
+            IV4Router.ExactInputSingleParams({
+                poolKey: v4.key,
+                zeroForOne: v4CurrencyIn == v4.key.currency0, // 
+                amountIn: ActionConstants.OPEN_DELTA, // use the open delta as the amount to swap
+                amountOutMinimum: v4.amountOutMin,
+                hookData: bytes("")
+            })
+        );
+
+        params[2] = abi.encode(
+            v4currencyOut,
+            uint256(v4.amountOutMin)
+        )
+
+        // inputs for the v4 swap
+        inputs[commands.length -1] = abi.encode(actions, params);
+
+        router.execute(commands, inputs, block.timestamp);
+
+        withdraw(v4currencyOut, msg.sender);
     }
 
     function withdraw(address currency, address receiver) private {
