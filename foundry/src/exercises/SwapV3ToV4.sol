@@ -64,7 +64,8 @@ contract SwapV3ToV4 {
             );
         } else {
             commands = abi.encodePacked(
-                uint8(Commands.V3_SWAP_EXACT_IN, uint8(Commands.V4_SWAP));
+                uint8(Commands.V3_SWAP_EXACT_IN),
+                uint8(Commands.V4_SWAP)
             );
         }
 
@@ -86,7 +87,7 @@ contract SwapV3ToV4 {
             inputs[1] = abi.encode(
                 address(router),
                 uint256(1) // flag to send min amount of WETH to router
-            )
+            );
         }
 
         // prepare actions and params for the v4 swap
@@ -100,7 +101,7 @@ contract SwapV3ToV4 {
         bytes[] memory params = new bytes[](3);
 
         params[0] = abi.encode(
-            v4currencyIn,
+            v4CurrencyIn,
             uint8(ActionConstants.CONTRACT_BALANCE), // use the balance of the contract as the amount to settle
             false
         );
@@ -116,16 +117,16 @@ contract SwapV3ToV4 {
         );
 
         params[2] = abi.encode(
-            v4currencyOut,
+            v4CurrencyOut,
             uint256(v4.amountOutMin)
-        )
+        );
 
         // inputs for the v4 swap
         inputs[commands.length -1] = abi.encode(actions, params);
 
         router.execute(commands, inputs, block.timestamp);
 
-        withdraw(v4currencyOut, msg.sender);
+        withdraw(v4CurrencyOut, msg.sender);
     }
 
     function withdraw(address currency, address receiver) private {
