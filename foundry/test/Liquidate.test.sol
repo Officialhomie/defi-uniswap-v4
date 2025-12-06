@@ -11,6 +11,9 @@ import {PoolKey} from "../src/types/PoolKey.sol";
 import {AAVE_V3_POOL, AAVE_V3_ORACLE, WETH, USDC} from "../src/Constants.sol";
 import {Liquidate} from "@exercises/Liquidate.sol";
 
+/*
+forge test --fork-url $FORK_URL --match-path test/Liquidate.test.sol -vvv
+*/
 contract LiquidateTest is Test {
     IERC20 constant weth = IERC20(WETH);
     IERC20 constant usdc = IERC20(USDC);
@@ -21,6 +24,11 @@ contract LiquidateTest is Test {
     Liquidate ex;
 
     function setUp() public {
+        // Fork Ethereum mainnet to access WETH and Aave V3 contracts
+        // Use latest block to avoid pruned state issues
+        // If FORK_URL env var is set, use it; otherwise use a public RPC endpoint
+        string memory forkUrl = vm.envOr("FORK_URL", string("https://eth.llamarpc.com"));
+        vm.createSelectFork(forkUrl);
         // Supply to Aave V3
         deal(WETH, address(this), 1e18);
         weth.approve(address(pool), type(uint256).max);

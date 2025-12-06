@@ -59,6 +59,28 @@ contract Liquidate is IFlashReceiver {
         // Get token amount to liquidate
         // Flash loan
         // Send profit to msg.sender
+
+        (address v4Token0, address v4Token1) = (key.currency0, key.currency1);
+
+        if (v4Token0 == address(0)) {
+            v4Token0 = WETH;
+        }
+        if (v4Token1 == address(0)) {
+            v4Token1 = WETH;
+        }
+
+        require(tokenToRepay == v4Token0 || tokenToRepay == v4Token1, "invalid pool key");
+        uint256 debt = liquidator.getDebt(tokenToRepay, user);
+
+        bytes memory data = abi.encode(user, key);
+
+        flash.flash(tokenToRepay, debt, data);
+
+        uint256 bal = IERC20(tokenToRepay).balanceOf(address(this));
+
+        if (bal > 0) {
+            IERC20(tokenToRepay).transfer(msg.sender, bal);
+        }
     }
 
     function flashCallback(
@@ -68,6 +90,68 @@ contract Liquidate is IFlashReceiver {
         bytes calldata data
     ) external {
         // Write your code here
+        // decode user and key from data
+        (address user, PoolKey memory key) = abi.decode(data, (address, PoolKey));
+
+        // get v4 token0 and v4 token1
+        (address v4Token0, address v4Token1) = (key.currency0, key.currency1);
+
+        // validate and map address(0) to WETH
+        if(v4Token0 == address(0)) {
+            v4Token0 = WETH;
+        }
+        if(v4Token1 == address(0)) {
+            v4Token1 = WETH;
+        }
+
+        // get collateral token which is the other token in the pool
+        // if tokenToRepay is v4Token0, then collateral is v4Token1
+        // if tokenToRepay is v4Token1, then collateral is v4Token0
+        address collateral = tokenToRepay == v4Token0 
+            ? v4Token1 
+            : v4Token0;
+
+        // approve liquidator to spend tokenToRepay
+        IERC20(tokenToRepay).approve(address(liquidator), amount);
+
+        // liquidate which will transfer tokenToRepay from user to liquidator
+        // and liquidate the user's debt
+        
+        liquidator.liquidate(collateral, tokenToRepay, user);
+
+        // get balance of collateral in this contract
+        uint256 colBal = IERC20(collateral).balanceOf(address(this));
+
+        // unwrap WETH if collateral is WETH
+        if (collateral == WETH) {
+            weth.withdraw(colBal);
+        }
+
+        // determine if collateral is token0 or token1
+        bool zeroForOne = collateral == v4Token0;
+
+        // swap collateral to tokenToRepay
+        swap({
+            key: key,
+            amountIn: uint128(colBal),
+            amountOutMin: 1,
+            zeroForOne: zeroForOne
+        });
+
+        // Check original key value to determine if swap output was ETH (address(0))
+        // The swap function uses the original key, so if key.currency0/currency1 is address(0),
+        // we receive ETH and need to wrap it to WETH
+        // Note: zeroForOne uses mapped values (v4Token0/v4Token1), but we check the original
+        // key values here because the swap function outputs ETH when key.currency0/currency1 is address(0)
+        address originalCurrencyOut = zeroForOne ? key.currency1 : key.currency0;
+        if(originalCurrencyOut == address(0)) {
+            weth.deposit{value: address(this).balance}();
+        }
+
+        uint256 bal = IERC20(tokenToRepay).balanceOf(address(this));
+
+        require(bal >= amount + fee, "insufficient amount to repay flash loan");
+        IERC20(tokenToRepay).transfer(address(flash), amount + fee);
     }
 
     function swap(
